@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  auth-db:
+    image: postgres:14.18-bookworm
+    container_name: FASTAPI-DB
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: shivam2003
+      POSTGRES_DB: fastapi_app  
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  auth-db-data:
