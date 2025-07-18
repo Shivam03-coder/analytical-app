@@ -1,9 +1,5 @@
-from .engine import async_engine, init_db, close_db
-from .session import get_db
+from .models import Book
+from .engine import async_engine, init_db
+from .session import AsyncSessionLocal, get_session
 
-__all__ = [
-    "async_engine",
-    "init_db",
-    "close_db",
-    "get_db",
-]
+__all__ = ["Book", "async_engine", "init_db", "AsyncSessionLocal", "get_session"]
