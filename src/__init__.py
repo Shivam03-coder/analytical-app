@@ -18,6 +18,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+@app.get("/test")
+async def test():
+    return {"message": "hello"}
+
 app.add_middleware(ResponseWrapperMiddleware)
 ErrorWrapper(app)
 

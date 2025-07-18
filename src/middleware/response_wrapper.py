@@ -1,32 +1,50 @@
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
-from typing import Callable
+from typing import Callable, Dict, Any
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ResponseWrapperMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable):
+    """Middleware to wrap all successful JSON responses in a standard format."""
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
-
+        logger.debug(f"Original response: {response.status_code}, {response.headers}")
+        
         if response.status_code >= 400:
+            logger.debug("Skipping wrapping for error response")
             return response
-
-        if not response.media_type or "application/json" not in response.media_type:
+            
+        content_type: str = response.headers.get("content-type", "")
+        if not content_type.startswith("application/json"):
+            logger.debug(f"Skipping non-JSON response (Content-Type: {content_type})")
             return response
-
-        original_body = b""
-        async for chunk in response.body_iterator:
-            original_body += chunk
-
-        response.body_iterator = iter([original_body])
-
+            
         try:
-            data = json.loads(original_body)
-        except Exception:
+            body: bytes = await response.body()
+            original_data: Any = json.loads(body.decode())
+            logger.debug(f"Successfully parsed JSON data: {original_data}")
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to decode JSON: {str(e)}")
             return response
-
-        wrapped_response = {
+        except Exception as e:
+            logger.error(f"Unexpected error parsing response: {str(e)}", exc_info=True)
+            return response
+            
+        wrapped_response: Dict[str, Any] = {
             "success": True,
-            "data": data,
+            "data": original_data,
+            "meta": {  
+                "status": response.status_code,
+                "endpoint": str(request.url.path)
+            }
         }
-        return JSONResponse(content=wrapped_response, status_code=response.status_code)
+        
+        return JSONResponse(
+            content=wrapped_response,
+            status_code=response.status_code,
+            headers=dict(response.headers)  
+        )
